@@ -1,0 +1,120 @@
+		Lex File
+------------------------------------------------------------------------------------
+%{
+#include "y.tab.h"
+extern int yylval;
+%}
+VAR [A-Za-z]
+DIGIT [0-9]
+%%
+[ \t\n]    
+while				{return WHILE;}
+{VAR}({VAR}|{DIGIT})*	{return ID;}
+{DIGIT}+             	{yylval=atoi(yytext);return NUM;}
+.                 	{return yytext[0];}
+%%
+------------------------------------------------------------------------------------
+	Yacc File
+------------------------------------------------------------------------------------
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include<ctype.h>
+char stack[50][50];
+extern char *yytext;
+char temp[20];
+int top=0;
+int tempcount=0;
+int lablecount=0;
+int position=0;
+int numb,flag=0;
+char number[10];
+%}
+
+%token ID NUM WHILE
+%right '='
+%left '+' '-'
+%left '*' '/'
+%left UMINUS
+
+%%
+
+S 	: WHILE '('E')'{fun1();}'{'E {fun2();}';''}'
+  	;
+ E	: T '=' {push();} E{generate_equal();}
+  	| E '+' {push();} E{generate();}
+  	| E '-' {push();} E{generate();}
+  	| E '*' {push();} E{generate();}
+ 	| E '/' {push();} E{generate();}
+  	| '(' E ')'
+  	| '-'{push();} E{generate_minus();} %prec UMINUS
+  	| T
+  	| NUM{numb=$1;push(numb);}
+  	;
+T 	: ID {push(yytext);}
+  	;
+%%
+
+main(){
+	printf("\nEnter the expression: ");
+	yyparse();
+}
+
+generate(){
+	if(flag==0){
+		printf("\nL%d:t%d = %s %s %s",lablecount++,tempcount,stack[top-3],stack[top-2],stack[top-1]);
+  		flag=1;
+  	}
+	else
+		printf("\nt%d = %s %s %s",tempcount,stack[top-3],stack[top-2],stack[top-1]);
+		
+  	top=top-3;
+	strcpy(stack[top],"t");
+	sprintf(temp,"%d",tempcount);
+	strcat(stack[top],temp);
+	tempcount++;
+}
+generate_minus(){
+	printf("\nt%d = -%s",tempcount,stack[top]);
+	top--;
+	strcpy(stack[top],"t");
+	sprintf(temp,"%d",tempcount);
+	strcat(stack[top],temp);
+	tempcount++;
+}
+generate_equal(){
+	printf("\n%s = %s",stack[top-3],stack[top-1]);
+ 	top=top-3;
+}
+
+fun1(){
+	printf("\nt%d = not %s",tempcount,stack[top]);
+	printf("\nif t%d goto L%d",tempcount++,lablecount);
+}
+
+fun2(){
+	printf("\ngoto L%d",lablecount-1);
+	printf("\nL%d: ",lablecount);
+	exit(0);
+}
+push(char operator[20]){
+	strcpy(stack[top++],operator);
+}
+
+int yyerror (char *msg){
+	return fprintf (stderr, "YACC: %s\n", msg);
+}
+
+int yywrap(){
+}        
+------------------------------------------------------------------------------------
+		Output
+------------------------------------------------------------------------------------
+Enter the expression: while (a+b){c+d;} 
+
+L0:t0 = a + b
+t1 = not t0
+if t1 goto L1
+t2 = c + d
+goto L0
+L1: 
